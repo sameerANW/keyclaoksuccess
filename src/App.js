@@ -1,24 +1,45 @@
-// src/App.js
-import React, { useState } from 'react';
-import './App.css';
-import "primereact/resources/themes/lara-light-indigo/theme.css";
-import "primereact/resources/primereact.min.css";
-import '/node_modules/primeflex/primeflex.css';
-import SignIn from './components/SignIn';
-import AuthButtons from './components/AuthButtons';
+import React, { useState, useEffect } from 'react';
+import keycloak from './components/keycloak';
+import AuthPage from './components/AuthPage';
 
-function App() {
-  const [showKeycloakUI, setShowKeycloakUI] = useState(false);
+const App = () => {
+  const [keycloakInitialized, setKeycloakInitialized] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [username, setUsername] = useState('');
+
+  useEffect(() => {
+    // Initialize Keycloak
+    keycloak.init({ onLoad: 'check-sso', promiseType: 'native' })
+      .then(authenticated => {
+        console.log(`User is ${authenticated ? 'authenticated' : 'not authenticated'}`);
+        setAuthenticated(authenticated);
+        setKeycloakInitialized(true);
+
+        // If the user is authenticated, get their username from Keycloak
+        if (authenticated) {
+          const user = keycloak.tokenParsed?.preferred_username;
+          setUsername(user);
+        }
+      })
+      .catch(err => {
+        console.error('Keycloak initialization failed:', err);
+        setKeycloakInitialized(true);
+      });
+  }, []);
+
+  if (!keycloakInitialized) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="App">
-      {!showKeycloakUI ? (
-        <SignIn setShowKeycloakUI={setShowKeycloakUI} />
+      {authenticated ? (
+        <h1>Welcome, {username}!</h1>  // Display username after login
       ) : (
-        <AuthButtons />
+        <AuthPage />
       )}
     </div>
   );
-}
+};
 
 export default App;
